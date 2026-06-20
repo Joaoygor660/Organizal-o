@@ -2034,8 +2034,10 @@ document.getElementById('btn-add-gasto')?.addEventListener('click',async()=>{
 
 // ─── INIT ASSÍNCRONO (carrega do Supabase) ────────────────────────────────────
 async function initApp(){
-  // mostrar loading
+  // salvar HTML original das seções antes de mostrar loading
+  const originalHTML={};
   document.querySelectorAll('.section').forEach(s=>{
+    originalHTML[s.id]=s.innerHTML;
     if(s.classList.contains('active')){
       s.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3);"><div style="font-size:24px;margin-bottom:12px;">☁️</div><div>Carregando seus dados...</div></div>';
     }
@@ -2073,8 +2075,10 @@ async function initApp(){
 
   showSyncStatus(!!_gastos);
 
-  // restaurar seção financeiro
-  document.getElementById('tab-financeiro').innerHTML=document.getElementById('tab-financeiro').innerHTML;
+  // restaurar HTML original de todas as seções
+  Object.keys(originalHTML).forEach(id=>{
+    document.getElementById(id).innerHTML=originalHTML[id];
+  });
 
   // renderizar tudo
   loadCarreira();
