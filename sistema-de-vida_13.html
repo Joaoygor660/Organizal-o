@@ -365,6 +365,10 @@ input[type=range]{padding:0;height:6px;accent-color:var(--accent);}
             </select>
           </div>
           <div>
+            <div class="input-label">Dia do vencimento</div>
+            <input id="div-vencimento" type="number" min="1" max="31" placeholder="Ex: 15">
+          </div>
+          <div>
             <div class="input-label">Observação</div>
             <input id="div-obs" placeholder="Negociando, atrasado, etc.">
           </div>
@@ -381,6 +385,14 @@ input[type=range]{padding:0;height:6px;accent-color:var(--accent);}
           Mapa de dívidas
         </div>
         <div id="lista-dividas"></div>
+      </div>
+
+      <div class="card" id="card-calendario-dividas">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Calendário de pagamentos
+        </div>
+        <div id="calendario-dividas"></div>
       </div>
 
       <div class="card">
@@ -1178,7 +1190,7 @@ function renderDividas(){
   const el=document.getElementById('lista-dividas');
   if(!dividas.length){
     el.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg><p>Nenhuma dívida registrada.<br>Seja honesto — conhecer o tamanho do problema é o primeiro passo.</p></div>`;
-    updateFinKpis(); return;
+    updateFinKpis(); renderCalendarioDividas(); return;
   }
   const sorted=[...dividas].sort((a,b)=>({alta:0,media:1,baixa:2}[a.prior]||0)-({alta:0,media:1,baixa:2}[b.prior]||0));
   el.innerHTML=sorted.map((d)=>{
@@ -1194,6 +1206,7 @@ function renderDividas(){
             <span class="badge ${PC[d.prior]}">${PL[d.prior]}</span>
             <span style="font-size:11px;color:var(--text3);">${TC[d.tipo]||d.tipo}</span>
           </div>
+          ${d.vencimento?`<div style="font-size:11px;color:var(--accent);margin-bottom:4px;">📅 Vencimento: dia ${d.vencimento}</div>`:''}
           ${d.obs?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;">${d.obs}</div>`:''}
           ${hasParc?`
           <div style="margin-top:6px;">
@@ -1243,6 +1256,46 @@ function renderDividas(){
     </div>`;
   }).join('');
   updateFinKpis();
+  renderCalendarioDividas();
+}
+
+function renderCalendarioDividas(){
+  const el=document.getElementById('calendario-dividas');
+  const comVenc=dividas.filter(d=>d.vencimento>0);
+  if(!comVenc.length){el.innerHTML='<div style="color:var(--text3);font-size:13px;padding:8px 0;">Nenhuma dívida com dia de vencimento definido.</div>';return;}
+  const now=new Date();
+  const year=now.getFullYear();
+  const month=now.getMonth();
+  const hoje=now.getDate();
+  const diasNoMes=new Date(year,month+1,0).getDate();
+  const primeiroDia=new Date(year,month,1).getDay();
+  const nomesMes=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const vencMap={};
+  comVenc.forEach(d=>{const dia=Math.min(d.vencimento,diasNoMes);if(!vencMap[dia])vencMap[dia]=[];vencMap[dia].push(d);});
+  let cells='';
+  ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].forEach(d=>{cells+=`<div style="font-size:11px;font-weight:600;color:var(--text3);text-align:center;padding:6px 0;">${d}</div>`;});
+  for(let i=0;i<primeiroDia;i++) cells+='<div></div>';
+  for(let d=1;d<=diasNoMes;d++){
+    const isHoje=d===hoje;
+    const divs=vencMap[d];
+    const bgColor=divs?'var(--danger)':isHoje?'var(--accent)':'transparent';
+    const txtColor=divs||isHoje?'#fff':'var(--text2)';
+    const border=isHoje&&!divs?'2px solid var(--accent)':'none';
+    const tooltip=divs?divs.map(x=>x.nome+' — '+brl(x.parcela||x.valor)).join('\n'):'';
+    const pastDue=divs&&d<hoje;
+    cells+=`<div style="position:relative;text-align:center;padding:6px 2px;border-radius:8px;background:${divs?'rgba(239,68,68,0.15)':'transparent'};border:${border};cursor:${divs?'help':'default'};" ${tooltip?`title="${tooltip}"`:''}>`
+    +`<div style="font-size:13px;font-weight:${divs||isHoje?'700':'400'};color:${divs?'var(--danger)':isHoje?'var(--accent)':'var(--text2)'};">${d}</div>`
+    +(divs?`<div style="margin-top:2px;">${divs.map(x=>`<div style="font-size:9px;color:var(--text1);background:var(--danger);color:#fff;border-radius:4px;padding:1px 4px;margin:1px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${pastDue?'⚠️ ':''}${x.nome}</div>`).join('')}</div>`:'')
+    +`</div>`;
+  }
+  el.innerHTML=`<div style="margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;">
+    <span style="font-size:16px;font-weight:600;color:var(--text1);">${nomesMes[month]} ${year}</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;">${cells}</div>
+  <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--text3);">
+    <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;border-radius:50%;background:var(--danger);"></div> Dia de pagamento</div>
+    <div style="display:flex;align-items:center;gap:4px;"><div style="width:10px;height:10px;border-radius:50%;border:2px solid var(--accent);"></div> Hoje</div>
+  </div>`;
 }
 
 window.delDivida=function(i){if(confirm('Remover esta dívida?')){dividas.splice(i,1);db_set(KEYS.div,dividas);renderDividas();}}
@@ -1296,9 +1349,9 @@ document.getElementById('btn-add-div').onclick=()=>{
   if(!nome||!valor){alert('Informe pelo menos o nome e o valor da dívida.');return;}
   const totalParc=Number(document.getElementById('div-total-parcelas').value)||0;
   const pagas=Number(document.getElementById('div-pagas').value)||0;
-  dividas.push({nome,valor:Number(valor),juros:document.getElementById('div-juros').value||0,parcela:document.getElementById('div-parcela').value||0,totalParcelas:totalParc,pagas:Math.min(pagas,totalParc),tipo:document.getElementById('div-tipo').value,prior:document.getElementById('div-prior').value,obs:document.getElementById('div-obs').value});
+  dividas.push({nome,valor:Number(valor),juros:document.getElementById('div-juros').value||0,parcela:document.getElementById('div-parcela').value||0,totalParcelas:totalParc,pagas:Math.min(pagas,totalParc),tipo:document.getElementById('div-tipo').value,prior:document.getElementById('div-prior').value,obs:document.getElementById('div-obs').value,vencimento:Number(document.getElementById('div-vencimento').value)||0});
   db_set(KEYS.div,dividas);
-  ['div-nome','div-valor','div-juros','div-parcela','div-total-parcelas','div-pagas','div-obs'].forEach(id=>document.getElementById(id).value='');
+  ['div-nome','div-valor','div-juros','div-parcela','div-total-parcelas','div-pagas','div-obs','div-vencimento'].forEach(id=>document.getElementById(id).value='');
   renderDividas();
 };
 
