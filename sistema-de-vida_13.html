@@ -2034,14 +2034,12 @@ document.getElementById('btn-add-gasto')?.addEventListener('click',async()=>{
 
 // ─── INIT ASSÍNCRONO (carrega do Supabase) ────────────────────────────────────
 async function initApp(){
-  // salvar HTML original das seções antes de mostrar loading
-  const originalHTML={};
-  document.querySelectorAll('.section').forEach(s=>{
-    originalHTML[s.id]=s.innerHTML;
-    if(s.classList.contains('active')){
-      s.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3);"><div style="font-size:24px;margin-bottom:12px;">☁️</div><div>Carregando seus dados...</div></div>';
-    }
-  });
+  // mostrar loading overlay sem destruir o DOM
+  const loadingOverlay=document.createElement('div');
+  loadingOverlay.id='loading-overlay';
+  loadingOverlay.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:var(--bg1,#111)';
+  loadingOverlay.innerHTML='<div style="text-align:center;color:var(--text3);"><div style="font-size:24px;margin-bottom:12px;">☁️</div><div>Carregando seus dados...</div></div>';
+  document.body.appendChild(loadingOverlay);
 
   // carregar tudo em paralelo
   const [
@@ -2075,10 +2073,9 @@ async function initApp(){
 
   showSyncStatus(!!_gastos);
 
-  // restaurar HTML original de todas as seções
-  Object.keys(originalHTML).forEach(id=>{
-    document.getElementById(id).innerHTML=originalHTML[id];
-  });
+  // remover loading overlay
+  const ol=document.getElementById('loading-overlay');
+  if(ol) ol.remove();
 
   // renderizar tudo
   loadCarreira();
